@@ -3,8 +3,8 @@ from flask_cors import CORS
 import sqlite3
 import datetime
 import re
-# Make sure to import urlunparse for your remove_slug function
-from urllib.parse import urlparse, urlunparse
+# urllib.parse.urlunparse is NOT needed by the new remove_slug.
+from urllib.parse import urlparse
 
 import joblib
 
@@ -24,86 +24,84 @@ try:
     print(f"✅ Successfully loaded ML model: {XGB_MODEL_FILENAME}")
 except FileNotFoundError:
     print(f"🚨 WARNING: Model file '{XGB_MODEL_FILENAME}' not found. API will not use ML for prediction.")
-    phishing_model = None # Ensure it's None
+    phishing_model = None
 except Exception as e:
     print(f"🚨 ERROR loading ML model '{XGB_MODEL_FILENAME}': {e}")
-    phishing_model = None # Ensure it's None
+    phishing_model = None
 
 try:
     tfidf_vectorizer = joblib.load(TFIDF_VECTORIZER_FILENAME)
     print(f"✅ Successfully loaded TF-IDF vectorizer: {TFIDF_VECTORIZER_FILENAME}")
 except FileNotFoundError:
     print(f"🚨 WARNING: TF-IDF vectorizer file '{TFIDF_VECTORIZER_FILENAME}' not found. ML prediction will fail.")
-    tfidf_vectorizer = None # Ensure it's None
+    tfidf_vectorizer = None
 except Exception as e:
     print(f"🚨 ERROR loading TF-IDF vectorizer '{TFIDF_VECTORIZER_FILENAME}': {e}")
-    tfidf_vectorizer = None # Ensure it's None
+    tfidf_vectorizer = None
 
 if phishing_model and tfidf_vectorizer:
     ml_components_loaded = True
 
 
-# --- YOUR remove_slug FUNCTION ---
-def remove_slug(url_string): # Changed parameter name for consistency
-    """Removes the last segment (slug) from the URL's path and query/fragment."""
+# --- YOUR NEW remove_slug/URL PREPROCESSING FUNCTION ---
+def preprocess_url_for_ml(url_string): # Renamed for clarity of purpose
+    """
+    Keeps up to the first two path segments of a URL.
+    Example: "https://www.hotstar.com/in/sports/cricket/rcb-vs-srh/..."
+    becomes "https://www.hotstar.com/in/sports"
+    """
     try:
         parsed = urlparse(url_string)
-        # Ensure path is not None and handle leading/trailing slashes consistently
-        path = parsed.path if parsed.path else "/"
-        # Split path into segments, filtering out empty strings that arise from multiple slashes or leading/trailing slashes
-        path_segments = [seg for seg in path.split('/') if seg]
+        
+        # Ensure scheme and netloc are present, otherwise it's not a standard web URL
+        if not parsed.scheme or not parsed.netloc:
+            print(f"preprocess_url_for_ml: Non-standard URL '{url_string}', returning as is for TF-IDF.")
+            return url_string # Or return an empty string/specific token if preferred for non-standard URLs
 
-        if len(path_segments) > 0:
-            # Remove the last segment
-            base_path_segments = path_segments[:-1]
-            # Reconstruct the path, ensuring it starts with a '/'
-            base_path = '/' + '/'.join(base_path_segments)
-            # If base_path is just '/', make sure it is exactly that (not '//' if base_path_segments was empty)
-            if not base_path_segments: # If all segments were removed (e.g. path was "/slug")
-                base_path = '/'
-            # Optionally, ensure it ends with a slash if it's not just the root
-            # This depends on how your TF-IDF was trained (with or without trailing slashes on paths)
-            # For now, let's keep it as is from your logic (might not have trailing /)
-            # Example: /foo/bar -> /foo. If you want /foo/, add:
-            # elif base_path != '/': base_path += '/'
+        path_segments = [seg for seg in parsed.path.strip('/').split('/') if seg] # Get non-empty path segments
+        
+        # Keep up to the first 2 segments
+        if len(path_segments) >= 2:
+            trimmed_path = '/' + '/'.join(path_segments[:2])
+        elif len(path_segments) == 1:
+            trimmed_path = '/' + path_segments[0]
+        else: # No path segments or only '/'
+            trimmed_path = '/' 
+            if parsed.path == "" : # if original path was empty (e.g. http://domain.com)
+                trimmed_path = "" # make processed path also empty for consistency if needed
+
+        # Reconstruct the base URL: scheme://netloc/trimmed_path
+        # If trimmed_path is just "/", scheme://netloc/ is fine.
+        # If trimmed_path is empty (for http://domain.com), we want scheme://netloc
+        base_url = f"{parsed.scheme}://{parsed.netloc}{trimmed_path if trimmed_path != '/' or (trimmed_path == '/' and path_segments) else ''}"
+        
+        # Handle case where original URL was just "http://domain.com" (no path, no trailing slash)
+        # and trimmed_path became "", so base_url is "http://domain.com"
+        # If original was "http://domain.com/", trimmed_path becomes "/", base_url is "http://domain.com/"
+        if not path_segments and parsed.path == "": # Original URL was like "http://domain.com"
+             base_url = f"{parsed.scheme}://{parsed.netloc}"
 
 
-        elif path == "/" or not path: # Root path or empty path
-            base_path = '/'
-        else: # This case should ideally not be reached if logic above is sound
-            base_path = path # Fallback to original path if something unexpected
-
-        # Rebuild the URL without the slug AND without query parameters or fragments
-        cleaned_url = urlunparse((
-            parsed.scheme,
-            parsed.netloc,
-            base_path,
-            '',  # params (always empty for http/https)
-            '',  # query (REMOVED by your function)
-            ''   # fragment (REMOVED by your function)
-        ))
-        print(f"remove_slug: Original='{url_string}', Cleaned='{cleaned_url}'")
-        return cleaned_url
+        print(f"preprocess_url_for_ml: Original='{url_string}', Processed='{base_url}'")
+        return base_url
     except Exception as e:
-        print(f"Error in remove_slug for '{url_string}': {e}. Returning original URL.")
-        return url_string # Fallback to original URL on error
+        print(f"Error in preprocess_url_for_ml for '{url_string}': {e}. Returning original URL.")
+        return url_string # Fallback
 
 
 # --- Feature Extraction Function using TF-IDF ---
 def extract_features_for_ml(url_string):
     """
-    First applies remove_slug, then transforms the modified URL string
+    First applies preprocess_url_for_ml, then transforms the modified URL string
     into TF-IDF features using the loaded vectorizer.
     """
     if not tfidf_vectorizer:
         raise ValueError("TF-IDF vectorizer is not loaded. Cannot extract features.")
 
-    # --- STEP 1: Apply your remove_slug function ---
-    processed_url = remove_slug(url_string)
+    # --- STEP 1: Apply your new URL preprocessing function ---
+    processed_url = preprocess_url_for_ml(url_string)
 
     # --- STEP 2: Vectorize the processed URL ---
-    # The vectorizer expects an iterable of strings.
-    # For a single URL, pass it as a list containing one string.
     url_features = tfidf_vectorizer.transform([processed_url])
     return url_features
 
@@ -139,59 +137,78 @@ def init_db():
 def scan_url():
     try:
         data = request.get_json()
-        url_to_scan = data.get('url')
+        url_to_scan_original = data.get('url')
 
-        if not url_to_scan:
+        if not url_to_scan_original:
             return jsonify({'error': 'URL is required'}), 400
 
-        is_phishing_result = 0
-        confidence_score = 0.0
-        message = "URL appears safe (default or ML error)"
+        is_phishing_final = 0
+        confidence_final = 0.0 # This will store the probability (0.0 to 1.0)
+        message = "URL analysis pending."
+        rule_triggered_phishing = False
 
-        if ml_components_loaded: # Check if models were loaded successfully
+        # --- RULE 1: HTTP is Phishing ---
+        if url_to_scan_original.lower().startswith("http://"):
+            is_phishing_final = 1
+            confidence_final = 0.90 # Assign high phishing probability for HTTP rule
+            message = "Detected as phishing due to insecure HTTP."
+            rule_triggered_phishing = True
+            print(f"Rule Triggered: URL '{url_to_scan_original}' uses HTTP. Marked as phishing.")
+
+        # --- ML Prediction (only if no rule has already flagged it as phishing) ---
+        if not rule_triggered_phishing and ml_components_loaded:
             try:
-                # 1. Extract features using TF-IDF (this now includes remove_slug)
-                features = extract_features_for_ml(url_to_scan)
+                features = extract_features_for_ml(url_to_scan_original)
                 
                 prediction_proba = phishing_model.predict_proba(features)
-                confidence_score = float(prediction_proba[0][1])
-                PHISHING_THRESHOLD = 0.5
-                is_phishing_result = 1 if confidence_score >= PHISHING_THRESHOLD else 0
+                ml_phishing_probability = float(prediction_proba[0][1]) # This is the raw probability (0.0 to 1.0)
+
+                # --- Phishing if probability > 0.6 (60%) ---
+                # So, 0.6000 is safe, 0.6000001 is phishing
+                PHISHING_THRESHOLD_ML = 0.6 
+                ml_is_phishing = 1 if ml_phishing_probability > PHISHING_THRESHOLD_ML else 0
                 
-                message = f"Detected by ML model (XGBoost + TF-IDF)"
-                print(f"ML Prediction for original URL '{url_to_scan}': Phishing={bool(is_phishing_result)}, Confidence={confidence_score:.4f}")
+                is_phishing_final = ml_is_phishing
+                confidence_final = ml_phishing_probability # Report ML's actual probability
+                
+                if ml_is_phishing == 1:
+                    message = f"Detected as phishing by ML model (Probability > {PHISHING_THRESHOLD_ML*100}%)."
+                else:
+                    message = f"Classified as safe by ML model (Probability <= {PHISHING_THRESHOLD_ML*100}%)."
+                # Print the original URL for correlation with preprocessing logs
+                print(f"ML Prediction for original URL '{url_to_scan_original}': Phishing={bool(ml_is_phishing)}, Raw Probability={ml_phishing_probability:.6f}")
 
-            except ValueError as ve: # Catch specific error from extract_features_for_ml if vectorizer not loaded
-                print(f"🚨 Error during feature extraction for '{url_to_scan}': {ve}")
-                message = f"ML Error: {ve}. Defaulting."
+            except ValueError as ve:
+                print(f"🚨 Error during feature extraction for '{url_to_scan_original}': {ve}")
+                message = f"ML Error: {ve}. Defaulting to safe."
+                # is_phishing_final, confidence_final remain 0, 0.0
             except Exception as e:
-                print(f"🚨 Error during ML prediction for '{url_to_scan}': {e}")
-                message = f"Error in ML prediction: {e}. Defaulting."
-        else:
-            # Fallback if ML model or vectorizer is not loaded
-            missing_msg_parts = []
-            if not phishing_model: missing_msg_parts.append("model")
-            if not tfidf_vectorizer: missing_msg_parts.append("vectorizer")
-            
-            print(f"ML component(s) ({', '.join(missing_msg_parts)}) not available. Using basic rule-based check for {url_to_scan}.")
-            is_phishing_result = 1 if "login-update-secure" in url_to_scan.lower() else 0 
-            confidence_score = 0.75 if is_phishing_result else 0.1
+                print(f"🚨 Error during ML prediction for '{url_to_scan_original}': {e}")
+                message = f"Error in ML prediction: {e}. Defaulting to safe."
+                # is_phishing_final, confidence_final remain 0, 0.0
+        
+        elif not rule_triggered_phishing and not ml_components_loaded:
+            missing_msg_parts = ["model" if not phishing_model else None, "vectorizer" if not tfidf_vectorizer else None]
+            missing_msg_parts = [comp for comp in missing_msg_parts if comp]
+            print(f"ML component(s) ({', '.join(missing_msg_parts)}) not available for '{url_to_scan_original}'. Using basic fallback.")
+            is_phishing_final = 1 if "login-update-secure" in url_to_scan_original.lower() else 0 
+            confidence_final = 0.75 if is_phishing_final else 0.1
             message = f"Fallback: Basic check (ML {', '.join(missing_msg_parts)} unavailable)"
-
+        
         conn = sqlite3.connect('phishing_stats.db')
         cursor = conn.cursor()
         cursor.execute(
             'INSERT INTO scans (url, is_phishing, confidence) VALUES (?, ?, ?)',
-            (url_to_scan, is_phishing_result, confidence_score)
+            (url_to_scan_original, is_phishing_final, confidence_final) # confidence_final is the probability
         )
         conn.commit()
         conn.close()
 
         return jsonify({
-            'url': url_to_scan,
-            'is_phishing': bool(is_phishing_result),
-            'confidence': confidence_score,
-            'risk_level': 'HIGH' if confidence_score > 0.7 else ('MEDIUM' if confidence_score > 0.4 else 'LOW'),
+            'url': url_to_scan_original,
+            'is_phishing': bool(is_phishing_final),
+            'confidence': confidence_final, # This is the raw probability from ML or rule
+            'risk_level': 'HIGH' if confidence_final > 0.7 else ('MEDIUM' if confidence_final > 0.4 else 'LOW'), # Risk level based on probability
             'message': message
         })
 
