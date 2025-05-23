@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify
+
 from flask_cors import CORS
+
 import sqlite3
 import datetime
 import re
@@ -9,7 +11,8 @@ from urllib.parse import urlparse
 import joblib
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/api/*": {"origins": [ "http://localhost:3000", "chrome-extension://*"]}})
+
 
 # --- Load Your ML Model and Vectorizer ---
 XGB_MODEL_FILENAME = 'xgb_model.pkl'
@@ -246,6 +249,39 @@ def test():
         'tfidf_vectorizer_status': vectorizer_status,
         'overall_ml_components_loaded': ml_components_loaded
     })
+
+@app.route('/api/recent', methods=['GET'])
+def get_recent_scans():
+    try:
+        conn = sqlite3.connect('phishing_stats.db')
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT id, url, is_phishing, confidence, timestamp
+            FROM scans
+            ORDER BY timestamp DESC
+            LIMIT 20
+        ''')
+
+        rows = cursor.fetchall()
+        conn.close()
+
+        scans = [
+            {
+                'id': row[0],
+                'url': row[1],
+                'is_phishing': bool(row[2]),
+                'confidence': row[3],
+                'timestamp': row[4]
+            }
+            for row in rows
+        ]
+
+        return jsonify({'scans': scans})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     init_db()
