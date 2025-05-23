@@ -69,3 +69,14 @@ venv/
 env/
 ENV/
 .venv/
+
+
+# Python (FastAPI or Django)
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.db
+*.egg-info/
+backend/.venv/
+backend/venv/
+backend/.mypy_cache/
