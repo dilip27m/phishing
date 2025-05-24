@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState } from 'react';
 import { Search, CheckCircle, AlertTriangle, ArrowRight } from 'lucide-react';
@@ -17,31 +17,34 @@ const Scanner = () => {
 
   const handleScan = async () => {
     if (!url) return;
-    
+
     setIsScanning(true);
-    
+
     try {
-      // In a real app, this would be an API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const isMalicious = url.includes('phish') || 
-                         url.includes('suspicious') || 
-                         Math.random() > 0.7;
-      
+      const response = await fetch('http://localhost:5000/api/scan-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+
+      const data = await response.json();
+
       setScanResult({
-        status: isMalicious ? 'phishing' : 'safe',
-        confidence: isMalicious ? 
-          Math.floor(Math.random() * 20) + 80 : 
-          Math.floor(Math.random() * 30) + 70,
-        explanation: isMalicious ?
-          'This URL contains suspicious patterns commonly found in phishing attempts. The domain was recently registered and mimics a legitimate service.' :
-          'This URL appears to be legitimate and has no known phishing indicators. The domain has a good reputation and secure connection.',
-        suggestion: isMalicious ?
-          'Do not click this link! Avoid entering any personal information if you have already visited this site.' :
-          'This link appears safe to visit, but always remain cautious about sharing sensitive information.'
+        status: data.is_phishing ? 'phishing' : 'safe',
+        confidence: Math.round(data.confidence * 100),
+        explanation: data.message || 'Scan complete.',
+        suggestion: data.is_phishing
+          ? '⚠️ This link is risky. Avoid submitting any personal or sensitive data.'
+          : '✅ This link seems safe, but always stay cautious online.',
       });
     } catch (error) {
       console.error('Scan failed:', error);
+      setScanResult({
+        status: 'phishing',
+        confidence: 0,
+        explanation: 'Something went wrong while scanning.',
+        suggestion: 'Try again or check your connection.',
+      });
     } finally {
       setIsScanning(false);
     }
@@ -59,7 +62,7 @@ const Scanner = () => {
           <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center">
             Check if a URL is <span className="text-cyan-400">Safe</span>
           </h2>
-          
+
           <div className="flex flex-col md:flex-row gap-4 mb-6">
             <div className="flex-1">
               <input
@@ -89,17 +92,21 @@ const Scanner = () => {
               )}
             </button>
           </div>
-          
+
           {scanResult && (
-            <div className={`mt-8 p-6 rounded-lg border ${
-              scanResult.status === 'safe' 
-                ? 'bg-green-900/20 border-green-700' 
-                : 'bg-red-900/20 border-red-700'
-            }`}>
+            <div
+              className={`mt-8 p-6 rounded-lg border ${
+                scanResult.status === 'safe'
+                  ? 'bg-green-900/20 border-green-700'
+                  : 'bg-red-900/20 border-red-700'
+              }`}
+            >
               <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-4">
-                <div className={`flex items-center justify-center p-3 rounded-full ${
-                  scanResult.status === 'safe' ? 'bg-green-700/30' : 'bg-red-700/30'
-                }`}>
+                <div
+                  className={`flex items-center justify-center p-3 rounded-full ${
+                    scanResult.status === 'safe' ? 'bg-green-700/30' : 'bg-red-700/30'
+                  }`}
+                >
                   {scanResult.status === 'safe' ? (
                     <CheckCircle className="h-8 w-8 text-green-400" />
                   ) : (
@@ -109,34 +116,42 @@ const Scanner = () => {
                 <div>
                   <h3 className="text-2xl font-bold flex items-center gap-2">
                     {scanResult.status === 'safe' ? 'Safe' : 'Phishing Detected'}
-                    <span className={`text-sm px-2 py-1 rounded ${
-                      scanResult.status === 'safe' ? 'bg-green-700/40 text-green-300' : 'bg-red-700/40 text-red-300'
-                    }`}>
+                    <span
+                      className={`text-sm px-2 py-1 rounded ${
+                        scanResult.status === 'safe'
+                          ? 'bg-green-700/40 text-green-300'
+                          : 'bg-red-700/40 text-red-300'
+                      }`}
+                    >
                       {scanResult.confidence}% confidence
                     </span>
                   </h3>
                   <p className="text-lg mt-1">
-                    {scanResult.status === 'safe' ? 
-                      'This URL appears to be legitimate' : 
-                      'This URL is potentially dangerous'}
+                    {scanResult.status === 'safe'
+                      ? 'This URL appears to be legitimate'
+                      : 'This URL is potentially dangerous'}
                   </p>
                 </div>
               </div>
-              
+
               <div className="mt-4 space-y-4">
                 <div>
                   <h4 className="font-medium text-gray-300 mb-1">Analysis:</h4>
                   <p className="text-gray-300">{scanResult.explanation}</p>
                 </div>
-                
-                <div className={`flex items-start gap-3 p-4 border rounded-lg ${
-                  scanResult.status === 'safe' 
-                    ? 'border-green-700/50 bg-green-900/10' 
-                    : 'border-red-700/50 bg-red-900/10'
-                }`}>
-                  <ArrowRight className={`h-5 w-5 mt-0.5 ${
-                    scanResult.status === 'safe' ? 'text-green-400' : 'text-red-400'
-                  }`} />
+
+                <div
+                  className={`flex items-start gap-3 p-4 border rounded-lg ${
+                    scanResult.status === 'safe'
+                      ? 'border-green-700/50 bg-green-900/10'
+                      : 'border-red-700/50 bg-red-900/10'
+                  }`}
+                >
+                  <ArrowRight
+                    className={`h-5 w-5 mt-0.5 ${
+                      scanResult.status === 'safe' ? 'text-green-400' : 'text-red-400'
+                    }`}
+                  />
                   <div>
                     <h4 className="font-medium mb-1">Recommendation:</h4>
                     <p>{scanResult.suggestion}</p>
