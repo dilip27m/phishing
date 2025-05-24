@@ -60,7 +60,7 @@ const Footer = () => {
           </p>
           <div>
             <p className="text-gray-500 text-sm text-center md:text-right">
-              Powered by TensorFlow and OpenAI GPT-4. Data sourced from PhishTank and APWG.
+              Created by TeamReds.
             </p>
           </div>
         </div>
