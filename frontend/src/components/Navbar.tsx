@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react';
 import { Shield, Menu, X } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -16,6 +18,9 @@ const Navbar = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Check if current path is dashboard or a subpage of dashboard
+  const isDashboard = pathname.startsWith('/dashboard');
 
   return (
     <nav
@@ -35,15 +40,14 @@ const Navbar = () => {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
             <NavLink href="/#home">Home</NavLink>
+            {isDashboard ? (
+              <NavLink href="/#home">Return Home</NavLink>
+            ) : (
+              <NavLink href="/dashboard">Dashboard</NavLink>
+            )}
             <NavLink href="/#scanner">Scanner</NavLink>
             <NavLink href="/#analytics">Analytics</NavLink>
             <NavLink href="/#education">Education</NavLink>
-            <Link 
-              href="/login"
-              className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 rounded-md transition-colors duration-300"
-            >
-              Sign Up
-            </Link>
           </div>
 
           {/* Mobile Navigation Button */}
@@ -63,15 +67,14 @@ const Navbar = () => {
         {isMobileMenuOpen && (
           <div className="md:hidden py-4 px-2 space-y-3">
             <NavLink href="/#home" mobile>Home</NavLink>
+            {isDashboard ? (
+              <NavLink href="/#home" mobile>Return Home</NavLink>
+            ) : (
+              <NavLink href="/dashboard" mobile>Dashboard</NavLink>
+            )}
             <NavLink href="/#scanner" mobile>Scanner</NavLink>
             <NavLink href="/#analytics" mobile>Analytics</NavLink>
             <NavLink href="/#education" mobile>Education</NavLink>
-            <Link
-              href="/login"
-              className="block w-full mt-4 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 rounded-md transition-colors duration-300 text-center"
-            >
-              Sign Up
-            </Link>
           </div>
         )}
       </div>
