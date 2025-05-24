@@ -16,13 +16,13 @@ const Hero = () => {
       id="home" 
       className="relative pt-32 pb-20 overflow-hidden"
     >
-      {/* Animated background elements */}
+     
       <div className="absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl"></div>
         <div className="absolute bottom-1/3 right-1/3 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
         
-        {/* Grid pattern */}
+      
         <div className="absolute inset-0 bg-[linear-gradient(rgba(0,24,53,0.3)_1px,transparent_1px),linear-gradient(90deg,rgba(0,24,53,0.3)_1px,transparent_1px)] bg-[size:40px_40px]"></div>
       </div>
 

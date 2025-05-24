@@ -10,6 +10,7 @@ import Leaderboard from '@/components/Leaderboard';
 import Scenarios from '@/components/Scenarios';
 import RecoveryGuide from '@/components/RecoveryGuide';
 import ValidEmails from '@/components/ValidEmails';
+import WhatsAppScams from '@/components/WhatsAppScams'; 
 
 import Footer from '@/components/Footer';
 
@@ -32,6 +33,7 @@ export default function Home() {
         <Scenarios />
         <RecoveryGuide />
         <Education />
+        <WhatsAppScams />
         <ValidEmails />
       </main>
       <Footer />

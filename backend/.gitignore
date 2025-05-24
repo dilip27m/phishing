@@ -80,3 +80,5 @@ __pycache__/
 backend/.venv/
 backend/venv/
 backend/.mypy_cache/
+back.zip
+extenstion.zip

@@ -87,7 +87,7 @@ const VerifyEmail = () => {
             </div>
           )}
 
-          {/* Educational Content */}
+        
           <div className="mt-10 space-y-6 text-gray-300">
             <h3 className="text-xl font-semibold text-white">
               📘 How to Recognize a Trustworthy Email Domain

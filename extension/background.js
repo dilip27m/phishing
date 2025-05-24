@@ -1,17 +1,17 @@
-// Background script - handles URL scanning
+
 const API_BASE = 'http://localhost:5000/api';
 
-// Scan URL when tab is updated
+
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.url) {
-    // Only scan HTTP/HTTPS URLs
+  
     if (tab.url.startsWith('http://') || tab.url.startsWith('https://')) {
       await scanCurrentUrl(tab.url, tabId);
     }
   }
 });
 
-// Main scanning function
+
 async function scanCurrentUrl(url, tabId) {
   try {
     console.log('🔍 Scanning URL:', url);
@@ -29,9 +29,9 @@ async function scanCurrentUrl(url, tabId) {
     }
 
     const result = await response.json();
-    console.log('📊 Scan result:', result);
+    console.log('Scan result:', result);
     
-    // Store result for popup
+ 
     await chrome.storage.local.set({
       [`scan_${tabId}`]: {
         url: url,
@@ -40,9 +40,9 @@ async function scanCurrentUrl(url, tabId) {
       }
     });
 
-    // Update badge and show warning if needed
+   
     if (result.is_phishing) {
-      // Red badge for phishing
+      
       chrome.action.setBadgeText({
         text: '!',
         tabId: tabId
@@ -52,14 +52,14 @@ async function scanCurrentUrl(url, tabId) {
         tabId: tabId
       });
       
-      // Send warning to content script
+      
       chrome.tabs.sendMessage(tabId, {
         action: 'showWarning',
         data: result
       }).catch(err => console.log('Could not send message to content script'));
       
     } else {
-      // Green badge for safe
+     
       chrome.action.setBadgeText({
         text: '✓',
         tabId: tabId
@@ -73,7 +73,7 @@ async function scanCurrentUrl(url, tabId) {
   } catch (error) {
     console.error('❌ Error scanning URL:', error);
     
-    // Gray badge for error
+    
     chrome.action.setBadgeText({
       text: '?',
       tabId: tabId
@@ -85,7 +85,7 @@ async function scanCurrentUrl(url, tabId) {
   }
 }
 
-// Clear badge when tab is closed
+
 chrome.tabs.onRemoved.addListener((tabId) => {
   chrome.storage.local.remove(`scan_${tabId}`);
 });

@@ -7,12 +7,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('scan-now').addEventListener('click', scanCurrentSite);
   document.getElementById('report-issue').addEventListener('click', reportIssue);
   document.getElementById('scan-manual-url').addEventListener('click', scanManualURL);
-  document.getElementById('go-website').addEventListener('click', () => {
-  chrome.tabs.create({ url: 'https://phishing-shield.yourdomain.com' });
-});
 
+  const goWebsiteBtn = document.getElementById('go-website');
+  if (goWebsiteBtn) {
+    goWebsiteBtn.addEventListener('click', () => {
+      if (chrome && chrome.tabs) {
+        chrome.tabs.create({ url: 'http://localhost:3000/' });
+      } else {
+        alert('Unable to open tab. "tabs" permission might be missing.');
+      }
+    });
+  }
 });
-
 
 function showConfidenceBar(confidence, isPhishing) {
   const container = document.getElementById("confidence-bar-container");

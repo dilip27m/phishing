@@ -19,7 +19,7 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Check if current path is dashboard or a subpage of dashboard
+  
   const isDashboard = pathname.startsWith('/dashboard');
 
   return (
@@ -37,7 +37,7 @@ const Navbar = () => {
             <span className="text-xl font-bold">PhishShield AI</span>
           </Link>
 
-          {/* Desktop Navigation */}
+         
           <div className="hidden md:flex items-center space-x-8">
             <NavLink href="/#home">Home</NavLink>
             {isDashboard ? (
@@ -50,7 +50,6 @@ const Navbar = () => {
             <NavLink href="/#education">Education</NavLink>
           </div>
 
-          {/* Mobile Navigation Button */}
           <button
             className="md:hidden text-gray-300 hover:text-white"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -63,7 +62,7 @@ const Navbar = () => {
           </button>
         </div>
 
-        {/* Mobile Menu */}
+       
         {isMobileMenuOpen && (
           <div className="md:hidden py-4 px-2 space-y-3">
             <NavLink href="/#home" mobile>Home</NavLink>

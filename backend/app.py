@@ -3,7 +3,6 @@ from flask_cors import CORS
 import sqlite3
 import datetime
 import re
-# Make sure to import urlunparse for your remove_slug function
 from urllib.parse import urlparse, urlunparse
 
 import joblib
@@ -11,39 +10,39 @@ import joblib
 app = Flask(__name__)
 CORS(app)
 
-# --- Load Your ML Model and Vectorizer ---
+
 XGB_MODEL_FILENAME = 'xgb_model.pkl'
 TFIDF_VECTORIZER_FILENAME = 'tfidf_vectorizer.pkl'
 
 phishing_model = None
 tfidf_vectorizer = None
-ml_components_loaded = False # Flag to check if models loaded successfully
+ml_components_loaded = False 
 
 try:
     phishing_model = joblib.load(XGB_MODEL_FILENAME)
     print(f"✅ Successfully loaded ML model: {XGB_MODEL_FILENAME}")
 except FileNotFoundError:
     print(f"🚨 WARNING: Model file '{XGB_MODEL_FILENAME}' not found. API will not use ML for prediction.")
-    phishing_model = None # Ensure it's None
+    phishing_model = None 
 except Exception as e:
     print(f"🚨 ERROR loading ML model '{XGB_MODEL_FILENAME}': {e}")
-    phishing_model = None # Ensure it's None
+    phishing_model = None 
 
 try:
     tfidf_vectorizer = joblib.load(TFIDF_VECTORIZER_FILENAME)
     print(f"✅ Successfully loaded TF-IDF vectorizer: {TFIDF_VECTORIZER_FILENAME}")
 except FileNotFoundError:
     print(f"🚨 WARNING: TF-IDF vectorizer file '{TFIDF_VECTORIZER_FILENAME}' not found. ML prediction will fail.")
-    tfidf_vectorizer = None # Ensure it's None
+    tfidf_vectorizer = None 
 except Exception as e:
     print(f"🚨 ERROR loading TF-IDF vectorizer '{TFIDF_VECTORIZER_FILENAME}': {e}")
-    tfidf_vectorizer = None # Ensure it's None
+    tfidf_vectorizer = None 
 
 if phishing_model and tfidf_vectorizer:
     ml_components_loaded = True
 
 
-# --- YOUR remove_slug FUNCTION (as provided) ---
+
 def remove_slug(url_string):
     """Keeps only the first path segment of the URL and removes query/fragment."""
     try:
@@ -52,7 +51,7 @@ def remove_slug(url_string):
         path_segments = [seg for seg in path.split('/') if seg]
 
         if len(path_segments) > 0:
-            base_path_segments = path_segments[:1] # Keeps only the first segment
+            base_path_segments = path_segments[:1] 
             base_path = '/' + '/'.join(base_path_segments)
             if not base_path_segments:
                 base_path = '/'
@@ -65,9 +64,9 @@ def remove_slug(url_string):
             parsed.scheme,
             parsed.netloc,
             base_path,
-            '',  # params
-            '',  # query
-            ''   # fragment
+            '',  
+            '',  
+            ''  
         ))
         print(f"remove_slug: Original='{url_string}', Cleaned='{cleaned_url}'")
         return cleaned_url
@@ -76,7 +75,7 @@ def remove_slug(url_string):
         return url_string
 
 
-# --- Feature Extraction Function using TF-IDF ---
+
 def extract_features_for_ml(url_string):
     if not tfidf_vectorizer:
         raise ValueError("TF-IDF vectorizer is not loaded. Cannot extract features.")
@@ -117,7 +116,7 @@ def init_db():
 def scan_url():
     try:
         data = request.get_json()
-        url_to_scan_original = data.get('url') # Use a distinct variable for the original URL
+        url_to_scan_original = data.get('url') 
 
         if not url_to_scan_original:
             return jsonify({'error': 'URL is required'}), 400
@@ -125,32 +124,29 @@ def scan_url():
         is_phishing_final = 0
         confidence_final = 0.0
         message = "URL analysis pending."
-        rule_triggered = False # General flag for any rule that makes a final decision
+        rule_triggered = False 
 
-        # --- RULE 1: Whitelist phishtank.org ---
-        # This rule should take highest precedence.
+       
         try:
             parsed_original = urlparse(url_to_scan_original.lower())
             if parsed_original.hostname == 'phishtank.org' or \
                (parsed_original.hostname and parsed_original.hostname.endswith('.phishtank.org')):
-                is_phishing_final = 0 # Safe
-                confidence_final = 0.01 # Very low phishing probability (high safe confidence)
+                is_phishing_final = 0 
+                confidence_final = 0.01 
                 message = "URL whitelisted (phishtank.org)."
                 rule_triggered = True
                 print(f"Rule Triggered: URL '{url_to_scan_original}' is from phishtank.org. Marked as safe.")
         except Exception as e:
             print(f"Error during phishtank.org whitelist check for '{url_to_scan_original}': {e}")
-            # Continue, as this rule might not apply or failed on a malformed URL
-
-        # --- RULE 2: HTTP is Phishing (only if not whitelisted) ---
+        
         if not rule_triggered and url_to_scan_original.lower().startswith("http://"):
-            is_phishing_final = 1 # Phishing
-            confidence_final = 0.90 # Assign high phishing probability for HTTP rule
+            is_phishing_final = 1 
+            confidence_final = 0.90 
             message = "Detected as phishing due to insecure HTTP."
             rule_triggered = True
             print(f"Rule Triggered: URL '{url_to_scan_original}' uses HTTP. Marked as phishing.")
 
-        # --- ML Prediction (only if no rule has already made a final decision) ---
+        
         if not rule_triggered and ml_components_loaded:
             try:
                 features = extract_features_for_ml(url_to_scan_original)
@@ -158,7 +154,7 @@ def scan_url():
                 prediction_proba = phishing_model.predict_proba(features)
                 ml_confidence_score = float(prediction_proba[0][1])
 
-                PHISHING_THRESHOLD = 0.5 # Using the 0.5 threshold from your provided app.py
+                PHISHING_THRESHOLD = 0.5 
                 ml_is_phishing = 1 if ml_confidence_score >= PHISHING_THRESHOLD else 0
                 
                 is_phishing_final = ml_is_phishing
@@ -173,11 +169,11 @@ def scan_url():
             except ValueError as ve:
                 print(f"🚨 Error during feature extraction for '{url_to_scan_original}': {ve}")
                 message = f"ML Error: {ve}. Defaulting to safe."
-                # is_phishing_final, confidence_final remain 0, 0.0
+                
             except Exception as e:
                 print(f"🚨 Error during ML prediction for '{url_to_scan_original}': {e}")
                 message = f"Error in ML prediction: {e}. Defaulting to safe."
-                # is_phishing_final, confidence_final remain 0, 0.0
+                
         
         elif not rule_triggered and not ml_components_loaded:
             missing_msg_parts = ["model" if not phishing_model else None, "vectorizer" if not tfidf_vectorizer else None]

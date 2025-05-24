@@ -1,7 +1,7 @@
-// Content script - shows warnings on page
+
 console.log('🛡️ Phishing Shield content script loaded');
 
-// Listen for messages from background script
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('📨 Message received:', message);
   
@@ -13,13 +13,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 
 function showPhishingWarning(data) {
-  // Remove existing warning if present
+ 
   const existingWarning = document.getElementById('phishing-shield-warning');
   if (existingWarning) {
     existingWarning.remove();
   }
 
-  // Create warning overlay
+ 
   const warningDiv = document.createElement('div');
   warningDiv.id = 'phishing-shield-warning';
   warningDiv.innerHTML = `
@@ -86,7 +86,7 @@ function showPhishingWarning(data) {
     </div>
   `;
 
-  // Add CSS animation
+  
   const style = document.createElement('style');
   style.textContent = `
     @keyframes slideIn {
@@ -98,7 +98,7 @@ function showPhishingWarning(data) {
 
   document.body.appendChild(warningDiv);
 
-  // Add event listeners
+  
   document.getElementById('phishing-go-back').addEventListener('click', () => {
     window.history.back();
   });
