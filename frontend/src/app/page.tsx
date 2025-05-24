@@ -32,7 +32,7 @@ export default function Home() {
         <Scenarios />
         <RecoveryGuide />
         <Education />
-          <ValidEmails />
+        <ValidEmails />
       </main>
       <Footer />
     </div>
