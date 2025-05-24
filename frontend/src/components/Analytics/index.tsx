@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState } from 'react';
 import { BarChart3, PieChart, LineChart, ClipboardList } from 'lucide-react';
 import PieChartComponent from './PieChartComponent';
@@ -55,7 +57,7 @@ const Analytics = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-gray-800/80 rounded-lg p-4 border border-gray-700">
                 <h3 className="text-lg font-medium mb-4">Phishing vs Safe Links</h3>
-                <div className="h-64">
+                <div className="h-[420px]">
                   <PieChartComponent />
                 </div>
               </div>
@@ -76,7 +78,7 @@ const Analytics = () => {
           {activeTab === 'pie' && (
             <div className="bg-gray-800/80 rounded-lg p-6 border border-gray-700">
               <h3 className="text-xl font-medium mb-6">Phishing vs Safe Links</h3>
-              <div className="h-80">
+              <div className="h-[420px]">
                 <PieChartComponent />
               </div>
               <div className="mt-6 text-gray-300">
