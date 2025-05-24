@@ -9,6 +9,8 @@ import DidYouKnow from '@/components/DidYouKnow';
 import Leaderboard from '@/components/Leaderboard';
 import Scenarios from '@/components/Scenarios';
 import RecoveryGuide from '@/components/RecoveryGuide';
+import ValidEmails from '@/components/ValidEmails';
+
 import Footer from '@/components/Footer';
 
 export default function Home() {
@@ -30,6 +32,7 @@ export default function Home() {
         <Scenarios />
         <RecoveryGuide />
         <Education />
+          <ValidEmails />
       </main>
       <Footer />
     </div>
